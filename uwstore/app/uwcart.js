@@ -1,0 +1,411 @@
+var uw_store = {
+	cart:{
+		config:{
+			type: "popup",
+			page_link: "#",
+			fullcart_mode: 'table',
+			cart_popup_close: "x",
+			count_caption: "Всего товаров:",
+			total_caption: "Сумма:",
+			cart_caption: "Корзина",
+			order_caption: "Оформить заказ",
+			empty_cart_caption: "Ваша корзина пуста",
+			back_to_cart:"Вернуться к корзине",
+			price_currency:"Руб",
+			make_order:"Оформить заказ",
+			send_order:"Отправить заказ",
+			full_total_caption:"Итого:",
+			order_success: '<h2>Ваш заказ отправлен!</h2><p>Мы свяжемся с вами в ближашее время</p>', //+
+			cart_success: '<h2>Товар добавлен в корзину!</h2>',
+			cart_plus:"+",
+			cart_minus:"-",
+			cart_remove: 'x',
+			clear_cart_caption:"Очистить корзину",
+			confidention: "<p><small>Отправляя форму вы принимаете <a href=\"#\">политику конфиденциальности</a></small></p>"
+		},
+		start: function(){
+			uw_store_json = $.ajax({
+				url: '/uwstore/store.json',
+				async:false,
+				type: 'post'
+			});
+			uw_store_json = uw_store_json.responseJSON;
+
+			uw_store_json.records.forEach(function(element){
+				$('[data-uw-store-id='+element['id']+']').each(function(){
+					if($(this).attr('data-uw-store-field')!=''){
+						if($(this).data('uw-store-field') == 'price'){
+							element[$(this).data('uw-store-field')] = parseFloat(element[$(this).data('uw-store-field')]).toLocaleString('ru-RU');
+						}
+						$(this).text(element[$(this).data('uw-store-field')]);
+					}
+				});
+			});
+
+			$('<div>')
+				.addClass('uw-store-cart-success')
+				.html(uw_store.cart.config.cart_success)
+				.appendTo('body')
+				.hide();
+
+			this.get();
+		},
+		get: function(dt = {}){
+			uw_cart = $.ajax({
+				url: '/uwstore/cart.php',
+				async:false,
+				data: dt,
+				type: 'post',
+				dataType: 'json'
+			});
+			
+			$('[uw-store-cart-count]').html(uw_cart.responseJSON.count);
+			$('[uw-store-cart-total]').html(uw_cart.responseJSON.total.toLocaleString('ru-RU')+' '+this.config.price_currency);
+			this.list();
+		},
+		list: function(){
+			var uc = this;
+
+			rand = new Date();
+			uw_cart = $.ajax({
+				url: '/uwstore/cart.php?hash='+rand,
+				async:false,
+				data: {
+					list:'yes'
+				},
+				type: 'post',
+				dataType: 'json'
+			});
+			
+			if(uw_cart.responseJSON['count']>0){
+				$('[uw-store-cart-empty]').hide();
+				$('[uw-store-cart-table]').html('');
+				var recs = uw_cart.responseJSON['records'];
+				if(typeof uw_cart.responseJSON['images'] != 'undefined'){
+					var images = uw_cart.responseJSON['images'];
+				}
+				var colspan = 2;
+				recs.forEach(function(element){
+					if(uw_store.cart.config.fullcart_mode == 'table'){
+						tr = $('<tr/>').addClass('uw-cart-table-row').appendTo('[uw-store-cart-table]');
+						if(typeof images!='undefined' && typeof images[element.id]!='undefined'){
+							$('<td/>').addClass('uw-cart-table-image').appendTo(tr).html('<figure><img src="'+images[element.id]+'"/></figure>');
+						}else{
+							$('<td/>').addClass('uw-cart-table-image').appendTo(tr).html('<figure></figure>');
+						}
+						$('<td/>').addClass('uw-cart-table-title').appendTo(tr).html(element.title);
+						$('<td/>').addClass('uw-cart-table-count').appendTo(tr).html('<button data-uw-store-id="'+element.id+'" data-uw-store-cartminus>'+uc.config.cart_minus+'</button> <input data-uw-store-cartcount data-uw-store-id="'+element.id+'" value="'+element.count+'"> <button data-uw-store-id="'+element.id+'" data-uw-store-cartplus>'+uc.config.cart_plus+'</button>');
+						$('<td/>').addClass('uw-cart-table-price').appendTo(tr).html(element.total.toLocaleString('ru-RU')+' '+uc.config.price_currency);
+						$('<td/>').addClass('uw-cart-table-remove').appendTo(tr).html('<button data-uw-store-id="'+element.id+'" data-uw-store-removefromcart>'+uc.config.cart_remove+'</button>');
+					}else{
+						tr = $('<div/>').addClass('uw-cart-table-row').appendTo('[uw-store-cart-table]');
+						if(typeof images!='undefined' && typeof images[element.id]!='undefined'){
+							$('<div/>').addClass('uw-cart-table-image').appendTo(tr).html('<figure><img src="'+images[element.id]+'"/></figure>');
+						}else{
+							$('<div/>').addClass('uw-cart-table-image').appendTo(tr).html('<figure></figure>');
+						}
+						$('<div/>').addClass('uw-cart-table-title').appendTo(tr).html(element.title);
+						$('<div/>').addClass('uw-cart-table-count').appendTo(tr).html('<button data-uw-store-id="'+element.id+'" data-uw-store-cartminus>'+uc.config.cart_minus+'</button> <input data-uw-store-cartcount data-uw-store-id="'+element.id+'" value="'+element.count+'"> <button data-uw-store-id="'+element.id+'" data-uw-store-cartplus>'+uc.config.cart_plus+'</button>');
+						$('<div/>').addClass('uw-cart-table-price').appendTo(tr).html(element.total.toLocaleString('ru-RU')+' '+uc.config.price_currency);
+						$('<div/>').addClass('uw-cart-table-remove').appendTo(tr).html('<button data-uw-store-id="'+element.id+'" data-uw-store-removefromcart>'+uc.config.cart_remove+'</button>');
+					}
+				});
+				if(uw_store.cart.config.fullcart_mode == 'table'){
+					tr = $('<tr/>').addClass('uw-store-total-tr').appendTo('[uw-store-cart-table]');
+					$('<td/>').addClass('uw-store-total-caption').appendTo(tr).attr('colspan', 3).html(uc.config.full_total_caption);
+					$('<td/>').addClass('uw-store-total-count').appendTo(tr).html(uw_cart.responseJSON['total'].toLocaleString('ru-RU')+' '+uc.config.price_currency);
+					tr = $('<tr/>').addClass('uw-store-buttons-tr').appendTo('[uw-store-cart-table]');
+					order_td = $('<td/>').addClass('uw-store-table-order').appendTo(tr).attr('colspan', 4);
+					$('<button>').appendTo(order_td).attr('uw-store-order-button', '').html(uc.config.make_order);
+					$('<button>').appendTo(order_td).attr('data-uw-store-clearcart', '').html(uc.config.clear_cart_caption);
+				}else{
+					tr = $('<div/>').addClass('uw-store-total-tr').appendTo('[uw-store-cart-table]');
+					$('<div/>').addClass('uw-store-total-caption').appendTo(tr).html(uc.config.full_total_caption);
+					$('<div/>').addClass('uw-store-total-count').appendTo(tr).html(uw_cart.responseJSON['total'].toLocaleString('ru-RU')+' '+uc.config.price_currency);
+					tr = $('<div/>').addClass('uw-store-buttons-tr').appendTo('[uw-store-cart-table]');
+					order_td = $('<div/>').addClass('uw-store-table-order').appendTo(tr);
+					$('<button>').appendTo(order_td).attr('uw-store-order-button', '').html(uc.config.make_order);
+					$('<button>').appendTo(order_td).attr('data-uw-store-clearcart', '').html(uc.config.clear_cart_caption);
+				}
+				$('[uw-store-cart-table]').show();
+			}else{
+				$('[uw-store-cart-table]').hide();
+				$('[uw-store-cart-empty]').show();
+			}
+		},
+		render:{
+			full: function(element, configs = {}){
+				config = Object.assign(uw_store.cart.config, configs);
+				if(typeof element == 'undefined'){
+					element = 'body';
+				}
+				if(config.type == 'popup'){
+					uwfullcartpopup = $('<div/>')
+						.addClass('uw_store_cart_popup_cover')
+						.appendTo($(element))
+						.hide();
+					uwfullcart = $('<div/>')
+						.addClass('uw_store_cart')
+						.addClass('uw_store_cart_popup')
+						.appendTo(uwfullcartpopup);
+					$('<div>')
+						.addClass('uw_store_cart_popup_close')
+						.html(config.cart_popup_close)
+						.appendTo(uwfullcart)
+						.click(function(){
+							$('.uw_store_cart_popup_cover').hide();
+						});
+				}else{
+					uwfullcart = $('<div/>')
+						.addClass('uw_store_cart')
+						.appendTo($(element));
+				}
+
+				uwcartlist = $('<div/>')
+					.addClass('uw_store_cart_list')
+					.appendTo(uwfullcart);
+				$('<div>')
+					.attr('uw-store-cart-caption', '')
+					.html(config.cart_caption)
+					.appendTo(uwcartlist);
+
+				if(uw_store.cart.config.fullcart_mode == 'table'){
+					uwcarttable = $('<table>')
+						.attr('uw-store-cart-table', '')
+						.addClass('uw-store-cart-table')
+						.appendTo(uwcartlist);
+				}else{
+					uwcarttable = $('<div>')
+						.attr('uw-store-cart-table', '')
+						.addClass('uw-store-cart-table')
+						.appendTo(uwcartlist);
+				}
+				$('<div>')
+					.attr('uw-store-cart-empty', '')
+					.addClass('uw-store-cart-empty')
+					.html(config.empty_cart_caption)
+					.appendTo(uwcartlist);
+				uworderform = $('<div/>')
+					.addClass('uw_store_order_form')
+					.appendTo(uwfullcart).hide();
+				$('<div>')
+					.attr('uw-store-order-caption', '')
+					.addClass('uw-store-order-caption')
+					.html(config.order_caption)
+					.appendTo(uworderform);
+				uworderformbox = $('<div>')
+					.attr('uw-store-order-form-box', '')
+					.addClass('uw-store-order-form-box')
+					.appendTo(uworderform);
+				$('<input>')
+					.attr('uw-store-order-form-input', '')
+					.attr('name', 'person')
+					.attr('placeholder', 'Ваше имя')
+					.appendTo(uworderformbox);
+				$('<input>')
+					.attr('uw-store-order-form-input', '')
+					.attr('name', 'phone')
+					.attr('placeholder', 'Номер телефона')
+					.appendTo(uworderformbox);
+				$('<input>')
+					.attr('uw-store-order-form-input', '')
+					.attr('name', 'email')
+					.attr('placeholder', 'Электронная почта')
+					.appendTo(uworderformbox);
+				$('<textarea>')
+					.attr('uw-store-order-form-input', '')
+					.attr('name', 'comment')
+					.attr('placeholder', 'Комментарий к заказу')
+					.appendTo(uworderformbox);
+				$('<div>')
+					.addClass('uw-store-order-confidention')
+					.html(config.confidention)
+					.appendTo(uworderformbox);
+				$('<button>')
+					.attr('uw-store-order-send', '')
+					.html(config.send_order)
+					.appendTo(uworderformbox);
+				$('<button>')
+					.attr('uw-store-order-backtocart', '')
+					.html(config.back_to_cart)
+					.appendTo(uworderformbox);
+
+				$('<div>')
+					.addClass('uw-store-order-success')
+					.html(config.order_success)
+					.appendTo('body')
+					.hide();
+
+				uw_store.cart.get();
+			},
+			mini: function(element, configs = {}){
+				config = Object.assign(uw_store.cart.config, configs);
+				if(typeof element == 'undefined'){
+					element = 'body';
+				}
+				uwminicart = $('<div/>')
+					.addClass('uw_store_cart_mini')
+					.appendTo($(element));
+				mccover = $('<div/>')
+					.addClass('uw_store_cart_mini_line')
+					.appendTo(uwminicart);
+				$('<div/>')
+					.attr('uw-store-cart-count-caption','')
+					.html(config.count_caption)
+					.appendTo(mccover);
+				$('<div/>')
+					.attr('uw-store-cart-count', '')
+					.html(0)
+					.appendTo(mccover);
+				mccover = $('<div/>')
+					.addClass('uw_store_cart_mini_line')
+					.appendTo(uwminicart);
+				$('<div/>')
+					.attr('uw-store-cart-total-caption', '')
+					.html(config.total_caption)
+					.appendTo(mccover);
+				$('<div/>')
+					.attr('uw-store-cart-total', '')
+					.html(0)
+					.appendTo(mccover);
+
+				if(uw_store.cart.config.type == 'page'){
+					uw_store.cart.get();
+				}else{
+					uw_store.cart.render.full($('body'));
+				}
+			}
+		},
+		order: function(){
+			if($('[uw-store-order-form-input][name="person"]').val()==''){
+				$('[uw-store-order-form-input][name="person"]').addClass('uw-store-input-error');
+				return false;
+			}
+			if($('[uw-store-order-form-input][name="phone"]').val()==''){
+				$('[uw-store-order-form-input][name="phone"]').addClass('uw-store-input-error');
+				return false;
+			}
+
+			uw_order = $.ajax({
+				url: '/uwstore/order.php',
+				async:false,
+				data: {
+					order:{
+						person: $('[uw-store-order-form-input][name="person"]').val(),
+						phone: $('[uw-store-order-form-input][name="phone"]').val(),
+						mail: $('[uw-store-order-form-input][name="email"]').val(),
+						comment: $('[uw-store-order-form-input][name="comment"]').val(),
+						url: location.href
+					}
+				},
+				type: 'post',
+				dataType: 'json'
+			});
+
+			$('[uw-store-order-form-input]').val('');
+			uw_store.cart.get({clear: 'yes'});
+			$('.uw_store_cart_list').toggle();
+			$('.uw_store_order_form').toggle();
+			$(".uw_store_cart_popup_cover").hide();
+
+			$('.uw-store-order-success').fadeIn('slow', function(){
+				setTimeout(function(){
+					$('.uw-store-order-success').fadeOut('slow');
+				}, 2500);
+			});
+
+		}
+	}
+}
+
+$(document).ready(function(){
+	uw_config = $.ajax({
+		url: '/uwstore/config.json?hash='+new Date(),
+		async:false,
+		dataType: 'json'
+	});
+
+	uw_store.cart.config = uw_config.responseJSON;
+});
+
+$(document).on('change', '[uw-store-order-form-input]', function(){
+	$(this).removeClass('uw-store-input-error');
+});
+$(document).on('focus', '[uw-store-order-form-input]', function(){
+	$(this).removeClass('uw-store-input-error');
+});
+
+$(document).on('click', '[uw-store-order-send]', function(){
+	uw_store.cart.order();
+});
+
+$(document).on('change', '[data-uw-store-cartcount]', function(){
+	val = parseFloat($(this).val());
+	console.log(val);
+	if(val<1||Number.isNaN(val)){
+		val = 1;
+	}
+	$(this).val(val);
+	var id = $(this).data('uw-store-id');
+	uw_store.cart.get({
+		id: id,
+		action: 'count',
+		count: val
+	});
+});
+
+$(document).mouseup(function (e) {
+    if ($(".uw_store_cart_popup").has(e.target).length === 0){
+        $(".uw_store_cart_popup_cover").hide();
+    }
+});
+
+$(document).on('click', '.uw_store_cart_mini',function(){
+	if(uw_store.cart.config.type == 'page'){
+		if(uw_store.cart.config.page_link!=''){
+			location.href = uw_store.cart.config.type.page_link;
+		}
+	}else{
+		$('.uw_store_cart_popup_cover').toggle();
+	}
+}); 
+$(document).on('click', '[data-uw-store-addtocart]',function(){
+	var data = {id:$(this).data('uw-store-id')};
+	if($(this).data('uw-store-title')!=''){
+		data.image = $(this).data('uw-store-image');
+	}
+	uw_store.cart.get(data);
+	$('.uw-store-cart-success').fadeIn('slow', function(){
+		setTimeout(function(){
+			$('.uw-store-cart-success').fadeOut('slow');
+		}, 1500);
+	});
+});
+$(document).on('click', '[data-uw-store-cartplus]',function(){
+	var id = $(this).data('uw-store-id');
+	uw_store.cart.get({
+		id: id,
+		action: 'plus'
+	});
+});
+$(document).on('click', '[data-uw-store-cartminus]', function(){
+	var id = $(this).data('uw-store-id');
+	uw_store.cart.get({
+		id: id,
+		action: 'minus'
+	});
+});
+$(document).on('click', '[data-uw-store-removefromcart]', function(){
+	var id = $(this).data('uw-store-id');
+	uw_store.cart.get({
+		id: id,
+		remove: 'yes'
+	});
+});
+$(document).on('click', '[data-uw-store-clearcart]',function(){
+	uw_store.cart.get({clear: 'yes'});
+});
+$(document).on('click', '[uw-store-order-button], [uw-store-order-backtocart]',function(){
+	$('.uw_store_cart_list').toggle();
+	$('.uw_store_order_form').toggle();
+});
